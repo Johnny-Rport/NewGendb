@@ -10,7 +10,7 @@ class Page:
         # Returns size of dictionary as bytes
         return len(pickle.dumps(self.data))
 
-    def write(self, value):
+    def write(self, rid, value):
         self.num_records += 1
         
         # Size of current bytes in page
@@ -24,6 +24,13 @@ class Page:
             # Make another page handled by table.py
             return "Error Code???"
         else:
-            self.data[len(self.data)+1] = value
+            self.data[rid] = value
         pass
 
+    def read(self, rid):
+        return self.data[rid]
+
+    # TODO: Mark it for reclamation, need a functioning indirection column for this
+    def delete(self, rid):
+        self.data[rid] = None
+        pass
