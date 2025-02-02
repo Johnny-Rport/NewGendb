@@ -40,14 +40,20 @@ class Table:
 
     def insert_record(self, data: list):
         record = Record(self.rid, data[0], data[1:])
-        self.page_directory.get_tail(0).write(record.rid, record.key)
-        for index in range(1, self.num_columns):
-            self.page_directory.get_tail(index).write(record.rid, record.columns[index-1])
+        try:
+            self.page_directory.get_tail(0).write(record.rid, record.key)
+            for index in range(1, self.num_columns):
+                self.page_directory.get_tail(index).write(record.rid, record.columns[index-1])
+        except MemoryError:
+            self.page_directory.expand()
+            self.page_directory.get_tail(0).write(record.rid, record.key)
+            for index in range(1, self.num_columns):
+                self.page_directory.get_tail(index).write(record.rid, record.columns[index-1])
 
         self.rid += 1
         pass
 
-    #TODO: If there are more than 5 pages, implement way to get proper page, refer to page_directory
+    #TODO: If there are more than 5 pages, implement way to get proper page
     # Problem would occur in get_tail(i), what if we want a previous page not the latest page?
     def read_record(self, rid):
         data = []

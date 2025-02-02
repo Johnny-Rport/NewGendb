@@ -18,14 +18,17 @@ class Page_directory:
             self.make_page(pageid)
         pass
 
+    def expand(self):
+        for index in range(self.num_columns):
+            self.pageid_counter[index] += self.num_columns
+            index = self.pageid_counter[index]
+            self.make_page(index)
+        pass
+
     def make_page(self, pageid):
         page = Page()
         self.page_list[pageid] = page
         pass
-
-    def generate_id(self, index):
-        self.pageid_counter[index] += self.num_columns
-        return self.pageid_counter[index]
     
     def get_tail(self, column):
         id = self.pageid_counter[column]
@@ -50,3 +53,4 @@ class Page_directory:
 # Using the list, the base tail is always being pointed at, for easy appending
 # For querying use meta data to choose the page for RID
 #??? What goes into the metadata?
+# metaID | pointer to tail page RID | Version | RID range 

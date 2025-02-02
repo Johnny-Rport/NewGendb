@@ -19,10 +19,8 @@ class Page:
         # Size of value being inserted
         size_value = len(pickle.dumps(value))
 
-        # 4096 Bytes is ideal
         if(size_data + size_value) >= 4096:
-            # Make another page handled by table.py
-            return "Error Code???"
+            raise MemoryError(f"Insufficient space in page for RID: {rid}")
         else:
             self.data[rid] = value
         pass
