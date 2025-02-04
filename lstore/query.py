@@ -21,6 +21,15 @@ class Query:
     # Return False if record doesn't exist or is locked due to 2PL
     """
     def delete(self, primary_key):
+        record = self.record.rid(primary_key) # checks if rid exists
+
+        if not record or record.is_locked: # find out how to tell if a record is locked
+            return False
+
+        if primary_key in self.table.page_directory[primary_key]: # checks if the primary key is in the 
+            del self.table.page_directory[primary_key]
+            return True
+        return False
         pass
     
     
@@ -31,6 +40,9 @@ class Query:
     """
     def insert(self, *columns):
         schema_encoding = '0' * self.table.num_columns
+        if columns != self.table.num_columns:
+            return False
+        
         pass
 
     
