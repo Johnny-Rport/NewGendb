@@ -10,7 +10,7 @@ class Page:
         # Returns size of dictionary as bytes
         return len(pickle.dumps(self.data))
 
-    def write(self, value):
+    def write(self, rid, value):
         self.num_records += 1
         
         # Size of current bytes in page
@@ -19,11 +19,16 @@ class Page:
         # Size of value being inserted
         size_value = len(pickle.dumps(value))
 
-        # 4096 Bytes is ideal
         if(size_data + size_value) >= 4096:
-            # Make another page handled by table.py
-            return "Error Code???"
+            raise MemoryError(f"Insufficient space in page for RID: {rid}")
         else:
-            self.data[len(self.data)+1] = value
+            self.data[rid] = value
         pass
 
+    def read(self, rid):
+        return self.data[rid]
+
+    # TODO: Mark it for reclamation, need a functioning indirection column for this
+    def delete(self, rid):
+        self.data[rid] = None
+        pass
