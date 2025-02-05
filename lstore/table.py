@@ -16,7 +16,6 @@ class Record:
         self.columns = columns
 
 class Table:
-
     """
     :param name: string         #Table name
     :param num_columns: int     #Number of Columns: all columns are integer
@@ -38,9 +37,9 @@ class Table:
     # Todo. I think we need insert record to support query.py
     def insert_record (self, data_list):
         rid = self.next_rid
-        pk_value = data_list[self.key]
+        personKey_Value = data_list[self.key]
 
-        rec = Record(rid, pk_value, data_list)
+        rec = Record(rid, personKey_Value, data_list)
         self.next_rid += 1
 
         # ensure we have an empty map for this rid
@@ -60,7 +59,7 @@ class Table:
                     self.page_directory.expand()
 
         # Update the primary key index
-        self.index.pk_index[pk_value] = rid
+        self.index.pk_index[personKey_Value] = rid
 
     # Todo, need delete record to support query.py
     def delete_record(self , rid ):
@@ -71,7 +70,7 @@ class Table:
         if rid not in self.page_directory.record_map:
             return False
 
-        # Identify the pk_value so we can remove from index
+        # Identify the personKey_Value so we can remove from index
         record_data = self.read_record(rid)
         if record_data is None:
             # Already deleted
