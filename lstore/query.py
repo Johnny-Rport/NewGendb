@@ -21,16 +21,13 @@ class Query:
     # Return False if record doesn't exist or is locked due to 2PL
     """
     def delete(self, primary_key):
-        record = self.record.rid(primary_key) # checks if rid exists
 
-        if not record or record.is_locked: # find out how to tell if a record is locked
+        record = self.table.page_directory.get(primary_key)
+        if not record:
             return False
-
-        if primary_key in self.table.page_directory[primary_key]: # checks if the primary key is in the 
-            del self.table.page_directory[primary_key]
-            return True
-        return False
-        pass
+        
+        del self.table.page_directory[primary_key]
+        return True
     
     
     """
@@ -39,11 +36,18 @@ class Query:
     # Returns False if insert fails for whatever reason
     """
     def insert(self, *columns):
-        schema_encoding = '0' * self.table.num_columns
-        if columns != self.table.num_columns:
+        if len(columns) != self.table.num_columns:
             return False
         
-        pass
+        primary_key = columns[self.table.key]
+        if primary_key in self.table.page_directory:
+            return False
+        
+        rid = max(self.table.page_directory.keys(), default=0) + 1
+        new_record = Record(rid, primary_key, list(columns))
+        self.table.page_directory[primary_key] = new_record
+        
+        return True
 
     
     """
@@ -56,9 +60,7 @@ class Query:
     # Assume that select will never be called on a key that doesn't exist
     """
     def select(self, search_key, search_key_index, projected_columns_index):
-        pass
 
-    
     """
     # Read matching record with specified search key
     # :param search_key: the value you want to search based on
@@ -69,6 +71,19 @@ class Query:
     # Returns False if record locked by TPL
     # Assume that select will never be called on a key that doesn't exist
     """
+
+        results = []
+        
+        for record in self.table.page_directory.values():
+            if record.columns[search_key_index] == search_key:
+                projected_columns = [
+                    record.columns[i] if projected_columns_index[i] == 1 else None
+                    for i in range(len(record.columns))
+                ]
+                results.append(Record(record.rid, record.key, projected_columns))
+        
+        return results if results else False
+
     def select_version(self, search_key, search_key_index, projected_columns_index, relative_version):
         pass
 
@@ -78,8 +93,20 @@ class Query:
     # Returns True if update is succesful
     # Returns False if no records exist with given key or if the target record cannot be accessed due to 2PL locking
     """
+    #missing locking
     def update(self, primary_key, *columns):
-        pass
+        if primary_key not in self.table.page_directory:
+            return False
+        
+        record = self.table.page_directory[primary_key]
+        new_values = [
+            columns[i] if columns[i] is not None else record.columns[i]
+            for i in range(self.table.num_columns)
+        ]
+        
+        updated_record = Record(record.rid, primary_key, new_values)
+        self.table.page_directory[primary_key] = updated_record
+        return True
 
     
     """
@@ -91,7 +118,17 @@ class Query:
     # Returns False if no record exists in the given range
     """
     def sum(self, start_range, end_range, aggregate_column_index):
-        pass
+        total = 0
+        found = False
+        
+        for primary_key in range(start_range, end_range + 1):
+            record = self.table.page_directory.get(primary_key)
+            if record:
+                total += record.columns[aggregate_column_index]
+                found = True
+        
+        return total if found else False
+        
 
     
     """
