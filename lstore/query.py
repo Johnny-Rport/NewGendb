@@ -21,7 +21,10 @@ class Query:
     # Return False if record doesn't exist or is locked due to 2PL
     """
     def delete(self, primary_key):
-        pass
+        try:
+            return self.table.delete(primary_key)
+        except Exception:
+            return False
     
     
     """
@@ -30,8 +33,11 @@ class Query:
     # Returns False if insert fails for whatever reason
     """
     def insert(self, *columns):
-        schema_encoding = '0' * self.table.num_columns
-        pass
+        try:
+            return self.table.insert(*columns)
+        except Exception:
+            return False
+        
 
     
     """
@@ -44,7 +50,10 @@ class Query:
     # Assume that select will never be called on a key that doesn't exist
     """
     def select(self, search_key, search_key_index, projected_columns_index):
-        pass
+        try:
+            return self.table.select(search_key, search_key_index, projected_columns_index)
+        except Exception:
+            return []
 
     
     """
@@ -58,7 +67,8 @@ class Query:
     # Assume that select will never be called on a key that doesn't exist
     """
     def select_version(self, search_key, search_key_index, projected_columns_index, relative_version):
-        pass
+        print("Versioned select is not yet implemented.")
+        return []
 
     
     """
@@ -67,7 +77,10 @@ class Query:
     # Returns False if no records exist with given key or if the target record cannot be accessed due to 2PL locking
     """
     def update(self, primary_key, *columns):
-        pass
+        try:
+            return self.table.update(primary_key, *columns)
+        except Exception:
+            return False
 
     
     """
@@ -79,7 +92,10 @@ class Query:
     # Returns False if no record exists in the given range
     """
     def sum(self, start_range, end_range, aggregate_column_index):
-        pass
+        try:
+            return self.table.sum(start_range, end_range, aggregate_column_index)
+        except Exception:
+            return False
 
     
     """
@@ -92,7 +108,8 @@ class Query:
     # Returns False if no record exists in the given range
     """
     def sum_version(self, start_range, end_range, aggregate_column_index, relative_version):
-        pass
+        print("Versioned sum is not yet implemented.")
+        return False
 
     
     """
@@ -103,11 +120,22 @@ class Query:
     # Returns True is increment is successful
     # Returns False if no record matches key or if target record is locked by 2PL.
     """
-    def increment(self, key, column):
+    """
         r = self.select(key, self.table.key, [1] * self.table.num_columns)[0]
         if r is not False:
             updated_columns = [None] * self.table.num_columns
             updated_columns[column] = r[column] + 1
             u = self.update(key, *updated_columns)
             return u
+        return False
+    """
+    def increment(self, key, column):
+        try:
+            record = self.select(key, self.table.key, [1] * self.table.num_columns)
+            if record:
+                updated_columns = [None] * self.table.num_columns
+                updated_columns[column] = record[0][column] + 1
+                return self.update(key, *updated_columns)
+        except Exception:
+            return False
         return False
