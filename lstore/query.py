@@ -1,173 +1,273 @@
 from lstore.table import Table, Record
-from lstore.index import Index
-from typing import List
+from time import time
 
-# About the Query section, we are trying to using list to stored the informations
 class Query:
     """
-    # Creates a Query object that can perform different queries on the specified table 
-    Queries that fail must return False
-    Queries that succeed should return the result or True
-    Any query that crashes (due to exceptions) should return False
+    Creates a Query object that can perform different queries on the specified table.
+    Queries that fail must return False.
+    Queries that succeed should return the result or True.
+    Any query that crashes (due to exceptions) should return False.
     """
-    def __init__(self, table: Table):
-        self.table: Table = table
-        pass
+    def __init__(self, table):
+        self.table = table
 
-    
-    """
-    # internal Method
-    # Read a record with specified RID
-    # Returns True upon succesful deletion
-    # Return False if record doesn't exist or is locked due to 2PL
-    """
     def delete(self, primary_key):
-        
-        # Since, the delete a record following with the given primary key 
-        # if successful, return true, else false
-
-        try:
-            removeID = self.table.index.locate(self.table.key, primary_key)
-            if not removeID:
-                return False  # if the record is not found
-            rid = removeID[0]
-            return self.table.delete_record(rid)
-        except:
+        # Find the base record using the key_directory.
+        if primary_key not in self.table.key_directory:
             return False
-    
-    """
-    # Insert a record with specified columns
-    # Return True upon succesful insertion
-    # Returns False if insert fails for whatever reason
-    """
+        rid = self.table.key_directory[primary_key]
+        record = self.table.page_directory.get(rid)
+        if record is None or record.get('deleted', False):
+            return False
+        # Mark the record as deleted.
+        record['deleted'] = True
+        # (Optionally, you might also mark tail records as deleted.)
+        return True
+
     def insert(self, *columns):
-        """
-        Insert a new record with the given column values.
-        columns: [col0, col1, col2, ... colN], length = table.num_columns
-        Return True if successful, False otherwise.
-        """
-        try:
-            if len(columns) != self.table.num_columns:
-                return False
-            # schema_encoding can be a no-op for M1, but your skeleton includes it
-            # We'll ignore it and just call table.insert_record
-            self.table.insert_record(list(columns))
-            return True
-        except:
-            return False
+        # Check for duplicate primary key.
+        primary_key = columns[self.table.key]
+        if primary_key in self.table.key_directory:
+            return False  # Duplicate primary key not allowed.
 
-    
+        # Create metadata for the base record.
+        rid = self.table.next_rid
+        self.table.next_rid += 1
+        record = {
+            'rid': rid,
+            'key': primary_key,
+            'indirection': None,  # Initially, there is no tail record.
+            'timestamp': time(),
+            'schema_encoding': '0' * self.table.num_columns,  # No updates yet.
+            'data': list(columns),
+            'deleted': False
+        }
+        # Store the new record.
+        self.table.page_directory[rid] = record
+        self.table.key_directory[primary_key] = rid
+
+        # Update the primary key index (if it exists).
+        if self.table.index.indices[self.table.key] is not None:
+            self.table.index.indices[self.table.key][primary_key] = rid
+
+        return True
+
+    def __get_latest_value(self, record, column):
+        # Follow the tail record chain (if any) to find the most recent update for column.
+        current_rid = record['indirection']
+        while current_rid is not None:
+            tail_record = self.table.page_directory.get(current_rid)
+            if tail_record is None:
+                break
+            if tail_record['data'][column] is not None:
+                return tail_record['data'][column]
+            current_rid = tail_record['indirection']
+        return record['data'][column]
+
     def select(self, search_key, search_key_index, projected_columns_index):
         try:
-            # 1) locate all matching RIDs
-            rids = self.table.index.locate(search_key_index, search_key)
-            if not rids:
-                return []
-
-            results = []
-            for rid in rids:
-                row_data = self.table.read_record(rid)
-                if row_data is None:
-                    # means it's deleted or does not exist
-                    continue
-
-                # Project the requested columns
-                projected = []
-                for i, bit in enumerate(projected_columns_index):
-                    if bit == 1:
-                        projected.append(row_data[i])
-
-                # The primary key value is row_data[self.table.key]
-                record_obj = Record(rid, row_data[self.table.key], projected)
-                results.append(record_obj)
-
-            return results
-        except:
+            # For primary key search.
+            if search_key_index == self.table.key:
+                if search_key not in self.table.key_directory:
+                    return False
+                rid = self.table.key_directory[search_key]
+                base_record = self.table.page_directory.get(rid)
+                if base_record is None or base_record.get('deleted', False):
+                    return False
+                result_values = []
+                for i in range(self.table.num_columns):
+                    if projected_columns_index[i]:
+                        val = self.__get_latest_value(base_record, i)
+                        result_values.append(val)
+                    else:
+                        result_values.append(None)
+                # Return a Record object (as defined in table.py) wrapped in a list.
+                return [Record(base_record['rid'], base_record['key'], result_values)]
+            else:
+                # For non-primary key search, perform a linear scan.
+                for rid, record in self.table.page_directory.items():
+                    if (not record.get('deleted', False) and 
+                        record['data'][search_key_index] == search_key):
+                        result_values = []
+                        for i in range(self.table.num_columns):
+                            if projected_columns_index[i]:
+                                val = self.__get_latest_value(record, i)
+                                result_values.append(val)
+                            else:
+                                result_values.append(None)
+                        return [Record(record['rid'], record['key'], result_values)]
+                return False
+        except Exception:
             return False
 
-    
-    """
-    # Read matching record with specified search key
-    # :param search_key: the value you want to search based on
-    # :param search_key_index: the column index you want to search based on
-    # :param projected_columns_index: what columns to return. array of 1 or 0 values.
-    # :param relative_version: the relative version of the record you need to retreive.
-    # Returns a list of Record objects upon success
-    # Returns False if record locked by TPL
-    # Assume that select will never be called on a key that doesn't exist
-    """
     def select_version(self, search_key, search_key_index, projected_columns_index, relative_version):
-        # since the milestone 1 don't have multi version. Thus, just put pass 
-        pass
-    
-    """
-    # Update a record with specified key and columns
-    # Returns True if update is succesful
-    # Returns False if no records exist with given key or if the target record cannot be accessed due to 2PL locking
-    """
-    def update(self, primary_key, *columns):
         try:
-            if len(columns) != self.table.num_columns:
-                return False
+            if search_key_index == self.table.key:
+                if search_key not in self.table.key_directory:
+                    return False
+                rid = self.table.key_directory[search_key]
+                base_record = self.table.page_directory.get(rid)
+                if base_record is None or base_record.get('deleted', False):
+                    return False
 
-            rids = self.table.index.locate(self.table.key, primary_key)
-            if not rids:
-                return False
-            rid = rids[0]
+                # Build the tail chain (newest first)
+                tail_chain = []
+                current_rid = base_record['indirection']
+                while current_rid is not None:
+                    tail_record = self.table.page_directory.get(current_rid)
+                    if tail_record is None:
+                        break
+                    tail_chain.append(tail_record)
+                    current_rid = tail_record['indirection']
 
-            # Overwrite columns where columns[i] is not None
-            success = self.table.update_record(rid, columns)
-            return success
-        except:
+                # If relative_version is negative, we want to return the base record (i.e. ignore tail records)
+                if relative_version < 0:
+                    effective_chain = []
+                else:
+                    effective_chain = tail_chain[relative_version:] if relative_version < len(tail_chain) else []
+
+                version_data = list(base_record['data'])
+                for tail_record in reversed(effective_chain):
+                    for i in range(self.table.num_columns):
+                        if tail_record['data'][i] is not None:
+                            version_data[i] = tail_record['data'][i]
+
+                result_values = []
+                for i in range(self.table.num_columns):
+                    if projected_columns_index[i]:
+                        result_values.append(version_data[i])
+                    else:
+                        result_values.append(None)
+                return [Record(base_record['rid'], base_record['key'], result_values)]
+            else:
+                # Non-primary key search (similar changes apply)
+                for rid, record in self.table.page_directory.items():
+                    if (not record.get('deleted', False) and 
+                        record['data'][search_key_index] == search_key):
+                        tail_chain = []
+                        current_rid = record['indirection']
+                        while current_rid is not None:
+                            tail_record = self.table.page_directory.get(current_rid)
+                            if tail_record is None:
+                                break
+                            tail_chain.append(tail_record)
+                            current_rid = tail_record['indirection']
+                        if relative_version < 0:
+                            effective_chain = []
+                        else:
+                            effective_chain = tail_chain[relative_version:] if relative_version < len(tail_chain) else []
+                        version_data = list(record['data'])
+                        for tail_record in reversed(effective_chain):
+                            for i in range(self.table.num_columns):
+                                if tail_record['data'][i] is not None:
+                                    version_data[i] = tail_record['data'][i]
+                        result_values = []
+                        for i in range(self.table.num_columns):
+                            if projected_columns_index[i]:
+                                result_values.append(version_data[i])
+                            else:
+                                result_values.append(None)
+                        return [Record(record['rid'], record['key'], result_values)]
+                return False
+        except Exception:
             return False
 
-    
-    """
-    :param start_range: int         # Start of the key range to aggregate 
-    :param end_range: int           # End of the key range to aggregate 
-    :param aggregate_columns: int  # Index of desired column to aggregate
-    # this function is only called on the primary key.
-    # Returns the summation of the given range upon success
-    # Returns False if no record exists in the given range
-    """
+
+    def update(self, primary_key, *columns):
+        # 'columns' is a list of new values; a value of None means “no change” for that column.
+        if primary_key not in self.table.key_directory:
+            return False
+        base_rid = self.table.key_directory[primary_key]
+        base_record = self.table.page_directory.get(base_rid)
+        if base_record is None or base_record.get('deleted', False):
+            return False
+
+        # Create a new tail record.
+        new_rid = self.table.next_rid
+        self.table.next_rid += 1
+        # Build a simple schema encoding (a string with 1 for updated, 0 for not).
+        schema_encoding = ''.join(['1' if col is not None else '0' for col in columns])
+        tail_record = {
+            'rid': new_rid,
+            'key': primary_key,
+            'indirection': base_record['indirection'],  # Points to the previous tail record.
+            'timestamp': time(),
+            'schema_encoding': schema_encoding,
+            'data': list(columns),  # Only non-None values are updates.
+            'deleted': False
+        }
+        # Store the tail record.
+        self.table.page_directory[new_rid] = tail_record
+        # Update the base record’s indirection to point to this new tail record.
+        base_record['indirection'] = new_rid
+        return True
+
     def sum(self, start_range, end_range, aggregate_column_index):
-        try: 
-            result = self.table.sum_range(start_range, end_range, aggregate_column_index)
-            # If your table returns 0 when no records exist, you might want to check that:
-            # For a basic approach, we can return result even if 0.
-            # If result is 0 and we want to distinguish "no records"? 
-            # Typically M1 testers accept 0 as well.
-            return result
-        except:
+        try:
+            total = 0
+            found = False
+            for key, rid in self.table.key_directory.items():
+                if start_range <= key <= end_range:
+                    record = self.table.page_directory.get(rid)
+                    if record is None or record.get('deleted', False):
+                        continue
+                    val = self.__get_latest_value(record, aggregate_column_index)
+                    if val is not None:
+                        total += val
+                        found = True
+            return total if found else False
+        except Exception:
             return False
-    
-    """
-    :param start_range: int         # Start of the key range to aggregate 
-    :param end_range: int           # End of the key range to aggregate 
-    :param aggregate_columns: int  # Index of desired column to aggregate
-    :param relative_version: the relative version of the record you need to retreive.
-    # this function is only called on the primary key.
-    # Returns the summation of the given range upon success
-    # Returns False if no record exists in the given range
-    """
-    # Not requirement for the Milestone1
-    def sum_version(self, start_range, end_range, aggregate_column_index, relative_version):
-        pass
 
-    
-    """
-    incremenets one column of the record
-    this implementation should work if your select and update queries already work
-    :param key: the primary of key of the record to increment
-    :param column: the column to increment
-    # Returns True is increment is successful
-    # Returns False if no record matches key or if target record is locked by 2PL.
-    """
+    def sum_version(self, start_range, end_range, aggregate_column_index, relative_version):
+        try:
+            total = 0
+            found = False
+            for key, rid in self.table.key_directory.items():
+                if start_range <= key <= end_range:
+                    record = self.table.page_directory.get(rid)
+                    if record is None or record.get('deleted', False):
+                        continue
+                    tail_chain = []
+                    current_rid = record['indirection']
+                    while current_rid is not None:
+                        tail_record = self.table.page_directory.get(current_rid)
+                        if tail_record is None:
+                            break
+                        tail_chain.append(tail_record)
+                        current_rid = tail_record['indirection']
+                    if relative_version < 0:
+                        effective_chain = []
+                    else:
+                        effective_chain = tail_chain[relative_version:] if relative_version < len(tail_chain) else []
+                    version_data = list(record['data'])
+                    for tail_record in reversed(effective_chain):
+                        for i in range(self.table.num_columns):
+                            if tail_record['data'][i] is not None:
+                                version_data[i] = tail_record['data'][i]
+                    val = version_data[aggregate_column_index]
+                    if val is not None:
+                        total += val
+                        found = True
+            return total if found else False
+        except Exception:
+            return False
+
+
     def increment(self, key, column):
-        r = self.select(key, self.table.key, [1] * self.table.num_columns)[0]
+        # This helper first selects the record then updates the specified column by +1.
+        r = self.select(key, self.table.key, [1] * self.table.num_columns)
         if r is not False:
+            base_rid = self.table.key_directory.get(key)
+            if base_rid is None:
+                return False
+            base_record = self.table.page_directory.get(base_rid)
+            if base_record is None:
+                return False
+            current_val = self.__get_latest_value(base_record, column)
+            if current_val is None:
+                return False
             updated_columns = [None] * self.table.num_columns
-            updated_columns[column] = r[column] + 1
-            u = self.update(key, *updated_columns)
-            return u
+            updated_columns[column] = current_val + 1
+            return self.update(key, *updated_columns)
         return False
