@@ -1,29 +1,33 @@
+#  * Program Name: Database System -> L_Store Concepts
+#  * Author: Next Generation
+#  * Date: Feb 11/2025 (Final_Version_v04)
+#  * Description: 
 import pickle
+
+PAGE_SIZE = 4096
 
 class Page:
 
     def __init__(self):
+        #print("Creating new page.")  # Debugging output
         self.num_records = 0
-        self.data = {}
+        self.data = []
 
     def has_capacity(self):
         # Returns size of dictionary as bytes
-        return len(pickle.dumps(self.data))
+        return (len(pickle.dumps(self.data)) < PAGE_SIZE)
 
     def write(self, value):
+        #print(f"Before write: num_records = {self.num_records}, data = {self.data}")  # Debugging output
+        if(not self.has_capacity()):
+            #print("Page full, cannot write more data.")  # Debugging output
+            return False
+        self.data.append(value)
         self.num_records += 1
-        
-        # Size of current bytes in page
-        size_data = self.has_capacity()
-        
-        # Size of value being inserted
-        size_value = len(pickle.dumps(value))
+        #print(f"After write: num_records = {self.num_records}, data = {self.data}")  # Debugging output
+        return True
 
-        # 4096 Bytes is ideal
-        if(size_data + size_value) >= 4096:
-            # Make another page handled by table.py
-            return "Error Code???"
-        else:
-            self.data[len(self.data)+1] = value
-        pass
-
+    def read(self, index):
+        if(0 <= index and index < len(self.data)):
+            return self.data[index]
+        return None
