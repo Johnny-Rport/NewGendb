@@ -1,0 +1,90 @@
+Starting BufferPool tests with detailed output...
+
+Initialized BufferPool with capacity = 3
+=== Buffer Pool State ===
+Pool keys: []
+Pin counts: {}
+Dirty flags: {}
+=========================
+
+-- Getting page 1 (should not exist on disk, so a new Page is created) --
+[FakeDiskManager] Getting page from disk: ('table1', 1)
+Loaded page1: <lstore.page.Page object at 0x1014ff2d0>
+=== Buffer Pool State ===
+Pool keys: [('table1', 1)]
+Pin counts: {('table1', 1): 1}
+Dirty flags: {('table1', 1): False}
+=========================
+
+-- Getting page 1 again (should return the same page and increment pin count) --
+Page1 reloaded is the same instance: True
+=== Buffer Pool State ===
+Pool keys: [('table1', 1)]
+Pin counts: {('table1', 1): 2}
+Dirty flags: {('table1', 1): False}
+=========================
+
+-- Unpinning page 1 once --
+=== Buffer Pool State ===
+Pool keys: [('table1', 1)]
+Pin counts: {('table1', 1): 1}
+Dirty flags: {('table1', 1): False}
+=========================
+
+-- Getting page 2 --
+[FakeDiskManager] Getting page from disk: ('table1', 2)
+Loaded page2: <lstore.page.Page object at 0x1014ff250>
+=== Buffer Pool State ===
+Pool keys: [('table1', 1), ('table1', 2)]
+Pin counts: {('table1', 1): 1, ('table1', 2): 1}
+Dirty flags: {('table1', 1): False, ('table1', 2): False}
+=========================
+
+-- Getting page 3 --
+[FakeDiskManager] Getting page from disk: ('table1', 3)
+Loaded page3: <lstore.page.Page object at 0x1014ff790>
+=== Buffer Pool State ===
+Pool keys: [('table1', 1), ('table1', 2), ('table1', 3)]
+Pin counts: {('table1', 1): 1, ('table1', 2): 1, ('table1', 3): 1}
+Dirty flags: {('table1', 1): False, ('table1', 2): False, ('table1', 3): False}
+=========================
+
+-- Unpinning pages 1, 2, and 3 so they are all evictable --
+=== Buffer Pool State ===
+Pool keys: [('table1', 1), ('table1', 2), ('table1', 3)]
+Pin counts: {('table1', 1): 0, ('table1', 2): 0, ('table1', 3): 0}
+Dirty flags: {('table1', 1): False, ('table1', 2): False, ('table1', 3): False}
+=========================
+
+-- Marking page 2 as dirty --
+=== Buffer Pool State ===
+Pool keys: [('table1', 1), ('table1', 2), ('table1', 3)]
+Pin counts: {('table1', 1): 0, ('table1', 2): 0, ('table1', 3): 0}
+Dirty flags: {('table1', 1): False, ('table1', 2): True, ('table1', 3): False}
+=========================
+
+-- Getting page 4 (pool capacity is 3, so an unpinned page should be evicted) --
+[FakeDiskManager] Getting page from disk: ('table1', 4)
+Loaded page4: <lstore.page.Page object at 0x1014ffb90>
+=== Buffer Pool State ===
+Pool keys: [('table1', 2), ('table1', 3), ('table1', 4)]
+Pin counts: {('table1', 2): 0, ('table1', 3): 0, ('table1', 4): 1}
+Dirty flags: {('table1', 2): True, ('table1', 3): False, ('table1', 4): False}
+=========================
+
+-- Marking page 4 as dirty and flushing all pages --
+[FakeDiskManager] Saving page to disk: ('table1', 2)
+[FakeDiskManager] Saving page to disk: ('table1', 4)
+After flushing, BufferPool state:
+=== Buffer Pool State ===
+Pool keys: [('table1', 2), ('table1', 3), ('table1', 4)]
+Pin counts: {('table1', 2): 0, ('table1', 3): 0, ('table1', 4): 1}
+Dirty flags: {('table1', 2): False, ('table1', 3): False, ('table1', 4): False}
+=========================
+
+-- FakeDiskManager contents --
+Key: ('table1', 2), Page Data: []
+Key: ('table1', 4), Page Data: []
+
+BufferPool detailed test completed.
+(base) terrychen@Terry-Chens-Mac-Pro 165a-winter-2024-main % 
