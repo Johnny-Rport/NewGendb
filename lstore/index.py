@@ -1,7 +1,7 @@
-#  * Program Name: Database System -> L_Store Concepts
+#  * Program Name: Database System -> Milestone2 has been update
 #  * Author: Next Generation
-#  * Date: Feb 11/2025 (Final_Version_v04)
-#  * Description: 
+#  * Date: Feb 23 /2025 (Final_Version_v04)
+#  * Description:
 """
 A data strucutre holding indices for various columns of a table. Key column should be indexd by default, other columns can be indexed through this object. Indices are usually B-Trees, but other data structures can be used as well.
 """
@@ -16,6 +16,8 @@ class Index:
     """
     # returns the location of all records with the given value on column "column"
     """
+    # Using hash-map (Dictionary to store )
+    # This part is trying to Hash table to lookup
 
     def locate(self, column, value):
         print(f"Index lookup for value {value} in column {column}")  # Debugging output
@@ -31,6 +33,7 @@ class Index:
     # Returns the RIDs of all records with values in column "column" between "begin" and "end"
     """
 
+    # Using B-Tree searching, Based on the professor suggestion
     def locate_range(self, begin, end, column):
         if(self.indices[column] == None):
             return []
