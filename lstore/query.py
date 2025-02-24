@@ -33,16 +33,19 @@ class Query:
         """
         Selects records matching the given search key.
         """
-        rids = self.table.index.locate(search_key_index, search_key)
+        rids = self.table.index.locate(search_key, search_key_index)  # Fix argument order
 
         if not rids:
-            return False  # No records found
+            return []  # Return an empty list instead of False
 
         results = []
         for rid in rids:
             record = self.table.page_directory.get(rid)
             if record:
-                projected_values = [record.columns[i] if projected_columns_index[i] else None for i in range(self.table.num_columns)]
+                projected_values = [
+                    record.columns[i] if projected_columns_index[i] else None
+                    for i in range(self.table.num_columns)
+                ]
                 results.append(Record(record.rid, record.key, projected_values))
 
         return results

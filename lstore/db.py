@@ -48,7 +48,7 @@ class Database:
         # Save table metadata
         meta_file = os.path.join(self.db_path, "meta.pkl")
         table_metadata = {
-            name: (table.num_columns, table.key_column_index)
+            name: (table.num_columns, table.key)  
             for name, table in self.tables.items()
         }
         with open(meta_file, "wb") as f:
