@@ -17,3 +17,7 @@ G
 exam_tester_m2_part1.py,a/e/ae80d4652d0a75e02bd117af6f65a7f948ecabcc
 B
 lstore/__init__.py,4/2/42993fa0c4c97f0ec67fb39fefa6e743879939c3
+B
+m2_tester_part1.py,0/7/073e9e5a521c5354e885d03876fc51fc2460ec43
+B
+m2_tester_part2.py,e/1/e1048cd0f4e9d0b5e7321f72a71c2609a4d33d0f
