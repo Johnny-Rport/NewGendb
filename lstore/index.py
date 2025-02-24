@@ -1,38 +1,95 @@
-"""
-A data strucutre holding indices for various columns of a table. Key column should be indexd by default, other columns can be indexed through this object. Indices are usually B-Trees, but other data structures can be used as well.
-"""
+import pickle
+import os
+from sortedcontainers import SortedDict  # Used for B-Tree indexing
 
 class Index:
-
     def __init__(self, table):
-        # One index for each table. All our empty initially.
-        self.indices = [None] *  table.num_columns
-        pass
-
-    """
-    # returns the location of all records with the given value on column "column"
-    """
+        """
+        Initializes index structure.
+        - Uses B-Trees (SortedDict) for fast range queries.
+        """
+        self.table = table
+        self.indices = [None] * table.num_columns  # One index per column
 
     def locate(self, column, value):
-        pass
+        """
+        Returns all RIDs of records where column[column] == value.
+        """
+        if self.indices[column] is None:
+            return []  # No index exists for this column
 
-    """
-    # Returns the RIDs of all records with values in column "column" between "begin" and "end"
-    """
+        return self.indices[column].get(value, [])
 
     def locate_range(self, begin, end, column):
-        pass
+        """
+        Returns all RIDs of records where begin <= column[column] <= end.
+        """
+        if self.indices[column] is None:
+            return []  # No index exists
 
-    """
-    # optional: Create index on specific column
-    """
+        index = self.indices[column]
+        result = []
+
+        for key in index.irange(begin, end):
+            result.extend(index[key])
+
+        return result
 
     def create_index(self, column_number):
-        pass
+        """
+        Creates an index on the specified column.
+        """
+        if self.indices[column_number] is None:
+            self.indices[column_number] = SortedDict()  # B-Tree structure
+            print(f"Index created on column {column_number}")
 
-    """
-    # optional: Drop index of specific column
-    """
+        # Populate index with existing records
+        for rid, record in self.table.page_directory.items():
+            value = record.columns[column_number]
+            if value not in self.indices[column_number]:
+                self.indices[column_number][value] = []
+            self.indices[column_number][value].append(rid)
 
     def drop_index(self, column_number):
-        pass
+        """
+        Drops the index on the specified column.
+        """
+        self.indices[column_number] = None
+        print(f"Index dropped on column {column_number}")
+
+    def update_index(self, column, old_value, new_value, rid):
+        """
+        Updates an index when a record's value is modified.
+        """
+        if self.indices[column] is None:
+            return
+
+        # Remove old value
+        if old_value in self.indices[column]:
+            self.indices[column][old_value].remove(rid)
+            if not self.indices[column][old_value]:
+                del self.indices[column][old_value]  # Remove key if empty
+
+        # Add new value
+        if new_value not in self.indices[column]:
+            self.indices[column][new_value] = []
+        self.indices[column][new_value].append(rid)
+
+    def save_to_disk(self, db_path):
+        """
+        Saves all indexes to disk.
+        """
+        index_file = os.path.join(db_path, f"{self.table.name}_index.pkl")
+        with open(index_file, "wb") as f:
+            pickle.dump(self.indices, f)
+        print(f"Indexes saved for table {self.table.name}")
+
+    def load_from_disk(self, db_path):
+        """
+        Loads indexes from disk.
+        """
+        index_file = os.path.join(db_path, f"{self.table.name}_index.pkl")
+        if os.path.exists(index_file):
+            with open(index_file, "rb") as f:
+                self.indices = pickle.load(f)
+            print(f"Indexes loaded for table {self.table.name}")
