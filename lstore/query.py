@@ -31,21 +31,27 @@ class Query:
 
     def select(self, search_key, search_key_index, projected_columns_index):
         """
-        Selects records matching the given search key.
+        Selects records matching the given search key and projects the desired columns.
         """
-        rids = self.table.index.locate(search_key, search_key_index)  # Fix argument order
+        print(f"DEBUG: search_key_index = {search_key_index}, num_columns = {self.table.num_columns}")
+        
+        # Locate matching records using the correct column index (search_key_index)
+        rids = self.table.index.locate(search_key_index, search_key)
 
         if not rids:
-            return []  # Return an empty list instead of False
+            return []  # Return an empty list if no records found
 
         results = []
         for rid in rids:
             record = self.table.page_directory.get(rid)
+            
             if record:
+                # Project the required columns based on projected_columns_index
                 projected_values = [
                     record.columns[i] if projected_columns_index[i] else None
                     for i in range(self.table.num_columns)
                 ]
+                # Add the record with the projected values to the results
                 results.append(Record(record.rid, record.key, projected_values))
 
         return results
