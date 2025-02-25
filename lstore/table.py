@@ -1,7 +1,7 @@
 #  * Program Name: Database System -> L_Store Concepts
 #  * Author: Next Generation
 #  * Date: Feb 11/2025 (Final_Version_v04)
-#  * Description: 
+#  * Description:
 from lstore.index import Index
 from lstore.page import Page
 from lstore.page_directory import Page_directory
@@ -42,9 +42,34 @@ class Table:
         self.key_directory = {} # Used
         pass
     
-    def __merge(self):
-        print("merge is happening")
-        pass
+    # Update
+    def merge(self):
+        print("Merging table", self.name)
+        for key_val, base_rid in self.key_directory.items():
+            base_record = self.page_directory.get(base_rid)
+            if base_record is None:
+                continue
+            # Build the tail chain in order from most recent to oldest.
+            tail_chain = []
+            current_rid = base_record.get('indirection')
+            while current_rid is not None:
+                tail_record = self.page_directory.get(current_rid)
+                if tail_record is None:
+                    break
+                tail_chain.append(tail_record)
+                current_rid = tail_record.get('indirection')
+            # Now tail_chain[0] is the most recent update.
+            merged_data = list(base_record['data'])
+            # For each column, if there's a tail record that updated it, use the value from the most recent tail.
+            for i in range(self.num_columns):
+                for tail in tail_chain:
+                    if tail['data'][i] is not None:
+                        merged_data[i] = tail['data'][i]
+                        break  # Stop at the first (most recent) update for this column.
+            base_record['data'] = merged_data
+            base_record['indirection'] = None
+            pass
+
 
     def insert_record(self, data: list):
         record = Record(self.rid, data[0], data[1:])
@@ -59,7 +84,7 @@ class Table:
                 self.page_directory.get_tail(index).write(record.rid, record.columns[index-1])
 
         self.rid += 1
-        # Changed area for the Milestone2 
+        # Changed area for the Milestone2
         # Saving pages into the disk
         if self.disk_manager:
             self.disk_manager.save_pages_from_disk(self.name, record.rid, record)
@@ -67,11 +92,11 @@ class Table:
     #TODO: If there are more than 5 pages, implement way to get proper page
     # Problem would occur in get_tail(i), what if we want a previous page not the latest page?
 
-
-    # Changed area for the Milestone2 
+    # Changed area for the Milestone2
     """
     get the record (Or data), based on the rid to access
         @params requirment: 
+            
     """
     def read_record(self, rid):
         if rid in self.page_directory:
