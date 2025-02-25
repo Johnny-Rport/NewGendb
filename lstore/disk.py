@@ -1,3 +1,7 @@
+#  * Program Name: Database System -> L_Store Concepts
+#  * Author: Next Generation
+#  * Date: Feb 24/2025 (Final_Version_v04)
+#  * Description: 
 """
 Update:
     New functions
