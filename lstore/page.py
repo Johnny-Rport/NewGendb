@@ -1,8 +1,16 @@
 #  * Program Name: Database System -> L_Store Concepts
 #  * Author: Next Generation
 #  * Date: Feb 11/2025 (Final_Version_v04)
-#  * Description: 
-import pickle
+#  * Description:
+'''
+    Update: Milestone2
+    Surgery area: We are changed package from Pickle to the msgpack! 
+    But the code is not modify too much. Only changed obj from (Pickle to msgpack)
+    and some smallest adjustment !!!! 
+    Since, the pickle package has security issues. Thus, Tianren Chen and Johnny make final decison
+    changed msgpack became the new package.
+'''
+import msgpack
 
 PAGE_SIZE = 4096
 
@@ -15,7 +23,7 @@ class Page:
 
     def has_capacity(self):
         # Returns size of dictionary as bytes
-        return (len(pickle.dumps(self.data)) < PAGE_SIZE)
+        return (len(msgpack.dumps(self.data)) < PAGE_SIZE)
 
     def write(self, value):
         #print(f"Before write: num_records = {self.num_records}, data = {self.data}")  # Debugging output
