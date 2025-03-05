@@ -1,7 +1,9 @@
-#  * Program Name: Database System -> L_Store Concepts
-#  * Author: Next Generation
-#  * Date: Feb 24/2025 (Final_Version_v04)
-#  * Description: 
+#  * Program Name: Database System -> Milestone2 
+#  * Author: Next Genrartion
+#  * Date: Feb 23/2025 (Final_Version_v04)
+#  * Description:
+#  * Reference: collections python: https://docs.python.org/3/library/collections.html#collections.OrderedDict
+
 import collections
 from lstore.page import Page
 """
@@ -30,10 +32,10 @@ class BufferPool:
         self.pin_count = {}                     # key: (table_name, page_id) -> int
         self.dirty = {}                         # key: (table_name, page_id) -> bool
 
+
     """
         Returns the requested page from cache (if present) or loads it from disk.
         The page is pinned (its pin count increases).
-         
     """
     def get_page(self, table_name, page_id):
         key = (table_name, page_id)
@@ -65,7 +67,6 @@ class BufferPool:
         key = (table_name, page_id)
         if key in self.pin_count:
             self.pin_count[key] = max(0, self.pin_count[key] - 1)
-
 
     """
         Indicate the page has been modified it
