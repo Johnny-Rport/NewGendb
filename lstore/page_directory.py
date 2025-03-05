@@ -1,7 +1,22 @@
 #  * Program Name: Database System -> L_Store Concepts
 #  * Author: Next Generation
 #  * Date: Feb 11/2025 (Final_Version_v04)
+#  * Update: Feb 23/2025
 #  * Description: 
+'''
+    Update for Milestone2 Meta-data search file:
+        #  Version | Version_Tail | MIN rid range | MAX rid range 
+        #   FOR BASE PAGES
+        #   example: 5 columns
+        #   i += 5, for each page increment by 5 for easy book keeping
+
+        # --Indirection | --Column Pages--- |
+        #   meta0-tail  | Page 0  | Page 1  | and so on
+        #   meta1-tail  | Page 5  | Page 6  |
+        #   meta2-tail  | Page 10 | Page 11 |
+        #   meta3-tail  | Page 15 | Page 16 |
+        #   meta4-tail  | Page 20 | Page 21 |
+'''
 
 from lstore.page import Page
 
