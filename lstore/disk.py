@@ -1,16 +1,20 @@
-#  * Program Name: Database System -> L_Store Concepts
-#  * Author: Next Generation
-#  * Date: Feb 24/2025 (Final_Version_v04)
-#  * Description: 
+#  * Program Name: Database System -> Milestone2 
+#  * Author: Next Genrartion
+#  * Date: Feb 23/2025 (Final_Version_v04)
+#  * Description:
 """
-Update:
+Milestone2 Update:
     New functions
     1, save_page_from_disk(self, table_name, page_id, page_data):
     2, get_pages_from_disk(self, table_name, page_id):
     3, get_pages_from_disk(self, table_name, page_id):
     4, save_table_of_metadata_from_disk(self, table):
     5, get_table_of_metadata_from_disk(self, table_name):
+    
+Disk Utilies (disk_utilities.py) is a helper class. Which will help convert the 
+the disctionary keys becmase the stirng and intger formats.
 """
+
 import os
 import msgpack
 from lstore.disk_utilities import diskUtilities
@@ -32,6 +36,7 @@ class DiskManager:
     #       :param page_id:  unique page of id
     #       :param page_data: page of the datas
     #     """
+    #     msgpack reference Link: https://stackoverflow.com/questions/43442194/how-do-i-read-and-write-with-msgpack
     def save_page_from_disk(self, table_name, page_id, page_data):
         # For page_data, if it's a Page instance, call its to_dict() method.
         if hasattr(page_data, "to_dict"):
@@ -98,6 +103,8 @@ class DiskManager:
             "next_rid": table.next_rid,
             "page_directory": ser_page_directory,
             "key_directory": table.key_directory
+            # I want to do the Sechma Encoding parts
+            # TODO for later, if time is possible 
         }
         # Convert int keys to str so that msgpack accepts them.
         metadata_converted = diskUtilities.convert_keys_to_str(metadata)
@@ -135,8 +142,3 @@ class DiskManager:
             metadata["page_directory"] = new_page_directory
             return metadata
         return None
-
-
-    # Alias for compatibility with calls in query.py:
-    def save_pages_from_disk(self, table_name, page_id, page_data):
-        self.save_page_from_disk(table_name, page_id, page_data)
